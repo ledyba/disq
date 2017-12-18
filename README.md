@@ -1,4 +1,4 @@
-# Nothing-Shared dnsmasq for datacenters
+# Nothing-Shared distributed dnsmasq for datacenters
 
 何もデータの共有をしない（〜デバッグが楽）なdnsmasq（のようなもの）。
 
