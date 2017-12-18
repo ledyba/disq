@@ -16,6 +16,7 @@ func FromConfig(conf *conf.Config) (*Book, error) {
 	book := &Book{}
 
 	// V4Netrowks
+	book.V4Networks = make(map[string]*V4Network)
 	for name, netConf := range conf.V4Networks {
 		network, err := compileNetwork(&netConf)
 		if err != nil {
@@ -106,10 +107,12 @@ func compileNetwork(netConf *conf.V4Network) (*V4Network, error) {
 		log.Warnf("GatewayAddress is not configured for %s", netConf.InterfaceName)
 	} else {
 		gatewayAddress = net.ParseIP(netConf.GatewayAddr)
-		log.Errorf("NameServer %s (configured for %s) is not a valid ipv4 address.", netConf.GatewayAddr, netConf.InterfaceIPAddr)
-		return nil, &net.ParseError{
-			Type: "IP address",
-			Text: netConf.GatewayAddr,
+		if gatewayAddress == nil {
+			log.Errorf("NameServer %s (configured for %s) is not a valid ipv4 address.", netConf.GatewayAddr, netConf.InterfaceIPAddr)
+			return nil, &net.ParseError{
+				Type: "IP address",
+				Text: netConf.GatewayAddr,
+			}
 		}
 	}
 	return &V4Network{

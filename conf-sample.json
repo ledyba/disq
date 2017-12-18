@@ -1,5 +1,23 @@
 {
   "dns-servers": [],
-  "v4networks": {},
-  "machines": {}
+  "v4networks": {
+    "loopback": {
+      "interface": "lo0",
+      "interface-address": "127.0.0.1/24",
+      "dns-listen": "127.0.0.1:53",
+      "dhcp4-listen":"",
+      "lease-duration-days": 1.0,
+      "nameserver-address": ["8.8.8.8","8.8.4.4"],
+      "gateway-address": "127.0.0.1"
+    }
+  },
+  "machines": {
+    "zoi": [
+      {
+        "hardware-address": "72:00:07:ef:42:80",
+        "ip-address": "127.0.0.2",
+        "fqdn": "zoi.eagle-jump."
+      }
+    ]
+  }
 }

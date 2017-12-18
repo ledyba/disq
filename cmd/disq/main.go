@@ -6,8 +6,9 @@ import (
 	"io/ioutil"
 	"os"
 
-	"os/signal"
 	"syscall"
+
+	"os/signal"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/fatih/color"
@@ -48,12 +49,12 @@ func main() {
 		log.WithError(err).Fatal("Failed to parse config file")
 	}
 
-	book, err := book.FromConfig(cfg)
+	b, err := book.FromConfig(cfg)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to compile config file")
 	}
 
-	s := disq.FromBook(book)
+	s := disq.FromBook(b)
 	s.Start()
 
 	sigChan := make(chan os.Signal, 1)
@@ -64,31 +65,33 @@ func main() {
 		syscall.SIGQUIT)
 
 	run := true
+	log.Info("All subsystems started.")
 	for run {
 		select {
-		case err = <-s.ErrorStream:
-			log.WithError(err).Error("Error!")
 		case sig := <-sigChan:
 			switch sig {
 			case syscall.SIGHUP:
+				log.Info("SIGNAL: SIGHUP")
 				// reload
 			case syscall.SIGINT:
-				log.Info("SIGINT")
+				log.Info("SIGNAL: SIGINT")
 				s.Stop()
 				run = false
 			case syscall.SIGTERM:
-				log.Info("SIGTERM")
+				log.Info("SIGNAL: SIGTERM")
 				s.Stop()
 				run = false
 			case syscall.SIGQUIT:
-				log.Info("SIGQUIT")
+				log.Info("SIGNAL: SIGQUIT")
 				s.Stop()
 				run = false
 			default:
-				log.Info("Unknown signal:", sig.String())
+				log.Info("SIGNAL: Unknown signal:", sig.String())
 			}
+		case err = <-s.ErrorStream:
+			log.WithError(err).Error("Error!")
 		}
 	}
 
-	log.Info("Stopped.")
+	log.Info("All subsystems stopped.")
 }

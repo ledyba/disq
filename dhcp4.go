@@ -47,7 +47,9 @@ func (s *dhcp4Server) Serve() error {
 	}
 	s.conn = c
 	defer func() {
-		s.Shutdown()
+		if s.conn != nil {
+			s.Shutdown()
+		}
 	}()
 	return dhcp.Serve(c, s)
 }

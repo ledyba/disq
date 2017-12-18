@@ -22,8 +22,8 @@ type Server struct {
 	doneWg sync.WaitGroup
 }
 
-func (s *Server) storeBook(book *book.Book) {
-	s.bookPtr.Store(s)
+func (s *Server) storeBook(b *book.Book) {
+	s.bookPtr.Store(b)
 }
 func (s *Server) book() *book.Book {
 	return s.bookPtr.Load().(*book.Book)
@@ -33,12 +33,14 @@ func FromBook(book *book.Book) *Server {
 	s := &Server{}
 	s.storeBook(book)
 	s.ErrorStream = make(chan error, 1)
+	s.dns = make(map[string]*dns.Server)
 	for _, dnsListen := range book.DNSListens {
 		ns := &dns.Server{}
 		ns.Handler = s
 		ns.Addr = dnsListen
 		s.dns[dnsListen] = ns
 	}
+	s.dhcp4 = make(map[string]*dhcp4Server)
 	for network := range book.V4Networks {
 		ds := newDHCP4Server(s, network)
 		s.dhcp4[network] = ds
@@ -48,10 +50,14 @@ func FromBook(book *book.Book) *Server {
 
 func (s *Server) Start() {
 	for listen, ns := range s.dns {
-		s.doneWg.Add(1)
-		func(listen string) {
-			s.doneWg.Done()
+		go func(listen string) {
+			s.doneWg.Add(1)
+			defer s.doneWg.Done()
 			for atomic.LoadInt32(&s.done) == 0 {
+				log.
+					WithField("Module", "DNS").
+					WithField("Listen", listen).
+					Info("started")
 				err := ns.ListenAndServe()
 				if err != nil {
 					err = &DNSError{
@@ -64,9 +70,11 @@ func (s *Server) Start() {
 		}(listen)
 	}
 	for network, ds := range s.dhcp4 {
-		s.doneWg.Add(1)
-		func(network string) {
+		go func(network string) {
+			s.doneWg.Add(1)
+			defer s.doneWg.Done()
 			for atomic.LoadInt32(&s.done) == 0 {
+				ds.log().Info("started")
 				err := ds.Serve()
 				if err != nil {
 					err = &DHCP4Error{
@@ -78,7 +86,6 @@ func (s *Server) Start() {
 			}
 		}(network)
 	}
-	s.doneWg.Wait()
 }
 
 // Graceful shutdown
@@ -112,6 +119,7 @@ func (s *Server) Stop() {
 			s.ErrorStream <- err
 		}
 	}
+	s.doneWg.Wait()
 }
 
 // Reload book.
