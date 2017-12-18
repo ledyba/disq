@@ -1,7 +1,4 @@
-#! /bin/bash
-
-cat > ${GOFILE%.go}.gen.go <<END
-package ${GOPACKAGE}
+package main
 
 import (
 	"encoding/base64"
@@ -10,11 +7,11 @@ import (
 )
 
 func buildAt() string {
-	return "$(date -u "+%Y/%m/%d %H:%M:%S")"
+	return "2017/12/18 22:14:34"
 }
 
 func gitRev() string {
-	data, err := base64.StdEncoding.DecodeString("$(git log -1 | base64 | tr -d '[:space:]')")
+	data, err := base64.StdEncoding.DecodeString("Y29tbWl0IGM2MjlkMDBmOTQ2YTAwODczZmM3ZjEzY2QyZjBkMDU4YjNiZTY2ZjgKQXV0aG9yOiBwc2kgPHBzaUBsZWR5YmEub3JnPgpEYXRlOiAgIE1vbiBEZWMgMTEgMTM6MTM6MjQgMjAxNyArMDkwMAoKICAgIGluaXQK")
 	if err != nil {
 		return fmt.Sprintf("<an error occured while reading git rev: %v>", err)
 	}
@@ -24,4 +21,3 @@ func gitRev() string {
 	return strings.TrimSpace(string(data))
 }
 
-END
