@@ -5,7 +5,6 @@ import (
 )
 
 type Config struct {
-	DNSServers []string             `json:"dns-servers"`
 	V4Networks map[string]V4Network `json:"v4networks"`
 	Machines   map[string]Machine   `json:"machines"`
 }

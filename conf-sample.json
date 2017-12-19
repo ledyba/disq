@@ -1,10 +1,9 @@
 {
-  "dns-servers": [],
   "v4networks": {
     "loopback": {
       "interface": "lo0",
       "interface-address": "127.0.0.1/24",
-      "dns-listen": "127.0.0.1:53",
+      "dns-listen": "127.0.0.1:20000",
       "dhcp4-listen":"",
       "lease-duration-days": 1.0,
       "nameserver-address": ["8.8.8.8","8.8.4.4"],

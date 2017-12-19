@@ -34,43 +34,54 @@ func FromBook(book *book.Book) *Server {
 	s.storeBook(book)
 	s.ErrorStream = make(chan error, 1)
 	s.dns = make(map[string]*dns.Server)
-	for _, dnsListen := range book.DNSListens {
-		ns := &dns.Server{}
-		ns.Handler = s
-		ns.Addr = dnsListen
-		s.dns[dnsListen] = ns
-	}
 	s.dhcp4 = make(map[string]*dhcp4Server)
-	for network := range book.V4Networks {
-		ds := newDHCP4Server(s, network)
-		s.dhcp4[network] = ds
+	for networkName, network := range book.V4Networks {
+		// Nameserver
+		dnsListen := network.DNSListen
+		if len(dnsListen) > 0 {
+			ns := &dns.Server{}
+			ns.Handler = s
+			ns.Addr = dnsListen
+			s.dns[networkName] = ns
+		}
+
+		dhcp4Listen := network.DHCP4Listen
+		if len(dhcp4Listen) > 0 {
+			ds := newDHCP4Server(s, networkName)
+			s.dhcp4[networkName] = ds
+		}
+
 	}
 	return s
 }
 
 func (s *Server) Start() {
-	for listen, ns := range s.dns {
-		go func(listen string) {
+	for networkName, ns := range s.dns {
+		go func(networkName string) {
 			s.doneWg.Add(1)
 			defer s.doneWg.Done()
 			for atomic.LoadInt32(&s.done) == 0 {
 				log.
 					WithField("Module", "DNS").
-					WithField("Listen", listen).
+					WithField("Network", networkName).
 					Info("started")
 				err := ns.ListenAndServe()
 				if err != nil {
 					err = &DNSError{
-						Listen: listen,
-						Err:    err,
+						Network: networkName,
+						Err:     err,
 					}
 					s.ErrorStream <- err
 				}
 			}
-		}(listen)
+			log.
+				WithField("Module", "DNS").
+				WithField("Network", networkName).
+				Info("stopped")
+		}(networkName)
 	}
-	for network, ds := range s.dhcp4 {
-		go func(network string) {
+	for networkName, ds := range s.dhcp4 {
+		go func(networkName string) {
 			s.doneWg.Add(1)
 			defer s.doneWg.Done()
 			for atomic.LoadInt32(&s.done) == 0 {
@@ -78,13 +89,14 @@ func (s *Server) Start() {
 				err := ds.Serve()
 				if err != nil {
 					err = &DHCP4Error{
-						Network: network,
+						Network: networkName,
 						Err:     err,
 					}
 					s.ErrorStream <- err
 				}
 			}
-		}(network)
+			ds.log().Info("stopped")
+		}(networkName)
 	}
 }
 
@@ -93,24 +105,28 @@ func (s *Server) Stop() {
 	var err error
 	atomic.StoreInt32(&s.done, 1)
 	for listen, ns := range s.dns {
-		err = ns.Shutdown()
 		log.
 			WithField("Module", "DNS").
-			WithField("Listen", listen).
-			Info("stopped")
+			WithField("Network", listen).
+			Info("shutdown requested")
+		err = ns.Shutdown()
 		if err != nil {
 			if err != nil {
 				err = &DNSError{
-					Listen: listen,
-					Err:    err,
+					Network: listen,
+					Err:     err,
 				}
 				s.ErrorStream <- err
 			}
 		}
+		log.
+			WithField("Module", "DNS").
+			WithField("Network", listen).
+			Info("shutdown succeeded")
 	}
 	for network, ds := range s.dhcp4 {
+		ds.log().Info("shutdown requested")
 		err = ds.Shutdown()
-		ds.log().WithError(err).Info("stopped")
 		if err != nil {
 			err = &DHCP4Error{
 				Network: network,
@@ -118,7 +134,9 @@ func (s *Server) Stop() {
 			}
 			s.ErrorStream <- err
 		}
+		ds.log().Info("shutdown succeeded")
 	}
+	log.Info("Waiting")
 	s.doneWg.Wait()
 }
 

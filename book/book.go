@@ -9,7 +9,6 @@ import (
 
 // Immutable!!
 type Book struct {
-	DNSListens []string
 	V4Networks map[string]*V4Network
 	Machines   map[string]*Machine
 	ARecords   map[string]*Interface

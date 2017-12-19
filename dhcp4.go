@@ -33,7 +33,7 @@ func newDHCP4Server(parent *Server, network string) *dhcp4Server {
 	return s
 }
 
-// Listen for the clients
+// Network for the clients
 func (s *dhcp4Server) Serve() error {
 	book := s.parent.book()
 	network, ok := book.V4Networks[s.network]

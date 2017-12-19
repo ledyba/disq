@@ -10,6 +10,8 @@ import (
 
 	"os/signal"
 
+	"sync"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/fatih/color"
 	"github.com/ledyba/disq"
@@ -64,34 +66,61 @@ func main() {
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
 
-	run := true
-	log.Info("All subsystems started.")
-	for run {
-		select {
-		case sig := <-sigChan:
-			switch sig {
-			case syscall.SIGHUP:
-				log.Info("SIGNAL: SIGHUP")
-				// reload
-			case syscall.SIGINT:
-				log.Info("SIGNAL: SIGINT")
-				s.Stop()
-				run = false
-			case syscall.SIGTERM:
-				log.Info("SIGNAL: SIGTERM")
-				s.Stop()
-				run = false
-			case syscall.SIGQUIT:
-				log.Info("SIGNAL: SIGQUIT")
-				s.Stop()
-				run = false
-			default:
-				log.Info("SIGNAL: Unknown signal:", sig.String())
+	var wg sync.WaitGroup
+
+	errorHandleDone := make(chan struct{})
+
+	wg.Add(1)
+	go func() {
+		log.WithField("Module", "ErrorHandler").Info("started.")
+		defer wg.Done()
+		defer log.WithField("Module", "ErrorHandler").Info("shutdown succeeded.")
+		for {
+			select {
+			case err := <-s.ErrorStream:
+				log.WithError(err).Error("Error!")
+			case <-errorHandleDone:
+				return
 			}
-		case err = <-s.ErrorStream:
-			log.WithError(err).Error("Error!")
 		}
-	}
+	}()
+
+	wg.Add(1)
+	go func() {
+		log.WithField("Module", "SignalHandler").Info("started")
+		defer wg.Done()
+		defer log.WithField("Module", "SignalHandler").Info("shutdown succeeded.")
+		for {
+			select {
+			case sig := <-sigChan:
+				switch sig {
+				case syscall.SIGHUP:
+					log.Info("SIGNAL: SIGHUP")
+					// reload
+				case syscall.SIGINT:
+					log.Info("SIGNAL: SIGINT")
+					s.Stop()
+					errorHandleDone <- struct{}{}
+					return
+				case syscall.SIGTERM:
+					log.Info("SIGNAL: SIGTERM")
+					s.Stop()
+					errorHandleDone <- struct{}{}
+					return
+				case syscall.SIGQUIT:
+					log.Info("SIGNAL: SIGQUIT")
+					s.Stop()
+					errorHandleDone <- struct{}{}
+					return
+				default:
+					log.Info("SIGNAL: Unknown signal:", sig.String())
+				}
+			}
+		}
+	}()
+	log.Info("All subsystems started.")
+
+	wg.Wait()
 
 	log.Info("All subsystems stopped.")
 }

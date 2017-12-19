@@ -12,10 +12,10 @@ func (e *DHCP4Error) Error() string {
 }
 
 type DNSError struct {
-	Err    error
-	Listen string
+	Err     error
+	Network string
 }
 
 func (e *DNSError) Error() string {
-	return fmt.Sprintf("DNS Error: listen=%s err=%s", e.Listen, e.Err)
+	return fmt.Sprintf("DNS Error: network=%s err=%s", e.Network, e.Err)
 }
