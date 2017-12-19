@@ -68,6 +68,7 @@ func (s *dhcp4Server) log() *log.Entry {
 }
 
 func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options dhcp.Options) dhcp.Packet {
+	errorStream := s.parent.ErrorStream
 	book := s.parent.book()
 	network := book.V4Networks[s.network]
 	var err error
@@ -82,6 +83,7 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 			s.log().WithError(err).Error("Could not parse mac addr: %s", hwaddr.String())
 			return nil
 		}
+		//TODO: wait
 		return dhcp.ReplyPacket(
 			p, dhcp.Offer,
 			network.InterfaceIPAddr,
@@ -105,8 +107,14 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 				network.DHCP4Options.SelectOrderOrAll(options[dhcp.OptionParameterRequestList]))
 		}
 		// Whats wrong?
-
-		s.log().Error()
+		err = &DHCP4WrongAddressRequestedError{
+			SName:        sname,
+			HardwareAddr: hwaddr,
+			Requested:    reqIP,
+			Expected:     ipaddr,
+		}
+		errorStream <- err
+		s.log().WithError(err).Error("Invalid request received. We sent NAK back.")
 		return dhcp.ReplyPacket(p, dhcp.NAK,
 			network.InterfaceIPAddr, nil, 0, nil)
 
