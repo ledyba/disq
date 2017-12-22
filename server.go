@@ -143,6 +143,7 @@ func (s *Server) Stop() {
 // Reload book.
 // But do not stop server.
 func (s *Server) Reload(b *book.Book) error {
+
 	s.storeBook(b)
 	return nil
 }

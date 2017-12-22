@@ -23,10 +23,43 @@ import (
 
 var config = flag.String("config", "./config.json", "Config file path")
 
-func main() {
-	flag.Parse()
+func reload(s *disq.Server) {
+	dat, err := func() ([]byte, error) {
+		var err error
+		f, err := os.Open(*config)
+		if err != nil {
+			return nil, err
+		}
+		dat, err := ioutil.ReadAll(f)
+		return dat, err
+	}()
 
+	if err != nil {
+		log.WithField("Module", "Reload").WithError(err).Error("Failed to load config file")
+		return
+	}
+
+	cfg, err := conf.Load(dat)
+	if err != nil {
+		log.WithField("Module", "Reload").WithError(err).Error("Failed to parse config file")
+		return
+	}
+
+	b, err := book.FromConfig(cfg)
+	if err != nil {
+		log.WithField("Module", "Reload").WithError(err).Error("Failed to compile config file")
+		return
+	}
+
+	err = s.Reload(b)
+	if err != nil {
+		log.WithField("Module", "Reload").WithError(err).Error("Failed to reload book")
+	}
+}
+
+func main() {
 	var err error
+	flag.Parse()
 
 	log.Infof(`
 ***** disq *****
@@ -101,7 +134,7 @@ Git Revision:
 				switch sig {
 				case syscall.SIGHUP:
 					log.Info("SIGNAL: SIGHUP")
-					// reload
+					reload(s)
 				case syscall.SIGINT:
 					log.Info("SIGNAL: SIGINT")
 					s.Stop()
