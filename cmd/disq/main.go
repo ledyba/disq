@@ -27,10 +27,15 @@ func main() {
 	flag.Parse()
 
 	var err error
-	log.Infof("***** disq *****")
-	log.Infof("Build at: %s", color.MagentaString("%s", buildAt()))
-	log.Infof("Git Revision: \n%s", color.MagentaString("%s", gitRev()))
-	log.Infof("****************")
+
+	log.Infof(`
+***** disq *****
+Build at: %s"
+Git Revision:
+%s
+****************`,
+		color.MagentaString("%s", buildAt()),
+		color.MagentaString("%s", gitRev()))
 
 	dat, err := func() ([]byte, error) {
 		var err error
@@ -78,7 +83,7 @@ func main() {
 		for {
 			select {
 			case err := <-s.ErrorStream:
-				log.WithError(err).Error("Error!")
+				log.WithField("Module", "ErrorHandler").WithError(err).Error("Error!")
 			case <-errorHandleDone:
 				return
 			}

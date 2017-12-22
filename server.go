@@ -64,7 +64,7 @@ func (s *Server) Start() {
 				log.
 					WithField("Module", "DNS").
 					WithField("Network", networkName).
-					Info("started")
+					Info("Started")
 				err := ns.ListenAndServe()
 				if err != nil {
 					err = &DNSError{
@@ -77,7 +77,7 @@ func (s *Server) Start() {
 			log.
 				WithField("Module", "DNS").
 				WithField("Network", networkName).
-				Info("stopped")
+				Info("Stopped")
 		}(networkName)
 	}
 	for networkName, ds := range s.dhcp4 {
@@ -85,7 +85,7 @@ func (s *Server) Start() {
 			s.doneWg.Add(1)
 			defer s.doneWg.Done()
 			for atomic.LoadInt32(&s.done) == 0 {
-				ds.log().Info("started")
+				ds.log().Info("Started")
 				err := ds.Serve()
 				if err != nil {
 					err = &DHCP4Error{
@@ -95,7 +95,7 @@ func (s *Server) Start() {
 					s.ErrorStream <- err
 				}
 			}
-			ds.log().Info("stopped")
+			ds.log().Info("Stopped")
 		}(networkName)
 	}
 }
@@ -108,7 +108,7 @@ func (s *Server) Stop() {
 		log.
 			WithField("Module", "DNS").
 			WithField("Network", listen).
-			Info("shutdown requested")
+			Info("Shutdown requested")
 		err = ns.Shutdown()
 		if err != nil {
 			if err != nil {
@@ -122,7 +122,7 @@ func (s *Server) Stop() {
 		log.
 			WithField("Module", "DNS").
 			WithField("Network", listen).
-			Info("shutdown succeeded")
+			Info("Shutdown succeeded")
 	}
 	for network, ds := range s.dhcp4 {
 		ds.log().Info("shutdown requested")
@@ -136,12 +136,13 @@ func (s *Server) Stop() {
 		}
 		ds.log().Info("shutdown succeeded")
 	}
-	log.Info("Waiting")
+	log.WithField("Module", "Server").Info("Waiting for shutting down all servers.")
 	s.doneWg.Wait()
 }
 
 // Reload book.
 // But do not stop server.
-func (s *Server) Reload(book *book.Book) error {
+func (s *Server) Reload(b *book.Book) error {
+	s.storeBook(b)
 	return nil
 }
