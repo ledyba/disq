@@ -22,6 +22,7 @@ import (
 //go:generate bash geninfo.sh
 
 var config = flag.String("config", "./config.json", "Config file path")
+var verbose = flag.Bool("v", false, "BE VERBOSE.")
 
 func reload(s *disq.Server) {
 	dat, err := func() ([]byte, error) {
@@ -69,6 +70,10 @@ Git Revision:
 ****************`,
 		color.MagentaString("%s", buildAt()),
 		color.MagentaString("%s", gitRev()))
+
+	if *verbose {
+		log.SetLevel(log.DebugLevel)
+	}
 
 	dat, err := func() ([]byte, error) {
 		var err error

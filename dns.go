@@ -3,6 +3,8 @@ package disq
 import (
 	"fmt"
 
+	"net"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/miekg/dns"
 )
@@ -20,8 +22,9 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		for _, q := range r.Question {
 			switch q.Qtype {
 			case dns.TypeA:
-				if ip := s.book().LookupIPForFQDN(q.Name); ip != nil {
-					ans := ip.String()
+				if ipaddr := s.book().LookupIPForFQDN(q.Name); ipaddr != nil {
+					// This host is in our datacenter.
+					ans := ipaddr.String()
 					log.WithField("Module", "DNS").Debugf("%s A %s", q.Name, ans)
 					rr, err := dns.NewRR(fmt.Sprintf("%s A %s", q.Name, ans))
 					if err != nil {
@@ -30,13 +33,27 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 					}
 					m.Answer = append(m.Answer, rr)
 				} else {
-					log.WithField("Module", "DNS").Debugf("%s A 0.0.0.0", q.Name)
-					rr, err := dns.NewRR(fmt.Sprintf("%s A %s", q.Name, "0.0.0.0"))
+					// Host in the outside.
+					addrs, err := net.LookupIP(q.Name)
 					if err != nil {
-						log.WithField("Module", "DNS").WithError(err).Error("[BUG] Error when creating DNS response")
-						return
+						log.WithField("Module", "DNS").WithError(err).Warnf("Not found: %s", q.Name)
+						break
 					}
-					m.Answer = append(m.Answer, rr)
+					for _, ipaddr = range addrs {
+						// LookupIP returns both v4 and v6 addrs.
+						ipaddr = ipaddr.To4()
+						if ipaddr == nil {
+							continue
+						}
+						resp := fmt.Sprintf("%s A %s", q.Name, ipaddr.String())
+						log.WithField("Module", "DNS").Debug(resp)
+						rr, err := dns.NewRR(resp)
+						m.Answer = append(m.Answer, rr)
+						if err != nil {
+							log.WithField("Module", "DNS").WithError(err).Error("[BUG] Error when creating DNS response")
+							return
+						}
+					}
 				}
 			default:
 				log.Info("Unknown name: ", q.Name)
@@ -44,8 +61,12 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		}
 		w.WriteMsg(m)
 	case dns.OpcodeIQuery:
+		log.WithField("Module", "DNS").Info("Can't answer IQuery questions.")
 	case dns.OpcodeStatus:
+		log.WithField("Module", "DNS").Info("Can't answer Status questions.")
 	case dns.OpcodeNotify:
+		log.WithField("Module", "DNS").Info("Can't answer Notify questions.")
 	case dns.OpcodeUpdate:
+		log.WithField("Module", "DNS").Info("Can't answer Update questions.")
 	}
 }
