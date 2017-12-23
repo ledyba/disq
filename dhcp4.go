@@ -37,6 +37,7 @@ func newDHCP4Server(parent *Server, network string) *dhcp4Server {
 func (s *dhcp4Server) Serve() error {
 	book := s.parent.book()
 	network, ok := book.V4Networks[s.network]
+
 	if !ok {
 		return fmt.Errorf("[DHCP][BUG] network not found: %s", s.network)
 	}
@@ -67,10 +68,29 @@ func (s *dhcp4Server) log() *log.Entry {
 		WithField("Network", s.network)
 }
 
+func joinIPv4(ips []net.IP) []byte {
+	if len(ips) == 1 {
+		return ips[0]
+	}
+	sum := make([]byte, len(ips)*4)
+	off := 0
+	for _, ip := range ips {
+		copy(sum[off:off+4], ip)
+		off += 4
+	}
+	return sum
+}
+
 func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options dhcp.Options) dhcp.Packet {
 	errorStream := s.parent.ErrorStream
 	book := s.parent.book()
 	network := book.V4Networks[s.network]
+	servOptions := dhcp.Options{
+		dhcp.OptionSubnetMask:       []byte(network.Network.Mask),
+		dhcp.OptionRouter:           []byte(network.GatewayAddr),
+		dhcp.OptionDomainNameServer: joinIPv4(network.NameServerAddrs),
+	}
+
 	var err error
 	sname := string(p.SName())
 	hwaddr := p.CHAddr()
@@ -89,7 +109,7 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 			network.InterfaceIPAddr,
 			ipaddr,
 			leaseDuration,
-			network.DHCP4Options.SelectOrderOrAll(options[dhcp.OptionParameterRequestList]))
+			servOptions.SelectOrderOrAll(options[dhcp.OptionParameterRequestList]))
 
 	case dhcp.Request:
 		if server, ok := options[dhcp.OptionServerIdentifier]; ok && !net.IP(server).Equal(network.InterfaceIPAddr) {
@@ -104,7 +124,7 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 			return dhcp.ReplyPacket(p, dhcp.ACK,
 				network.InterfaceIPAddr, reqIP,
 				leaseDuration,
-				network.DHCP4Options.SelectOrderOrAll(options[dhcp.OptionParameterRequestList]))
+				servOptions.SelectOrderOrAll(options[dhcp.OptionParameterRequestList]))
 		}
 		// Whats wrong?
 		err = &DHCP4WrongAddressRequestedError{

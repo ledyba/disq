@@ -24,7 +24,44 @@ func FromConfig(conf *conf.Config) (*Book, error) {
 		}
 		book.V4Networks[name] = network
 	}
+
+	// Machines
+	book.Machines = make(map[string]*Machine)
+	for name, mc := range conf.Machines {
+		m, err := compileMachine(name, &mc)
+		if err != nil {
+			return nil, err
+		}
+		book.Machines[name] = m
+	}
+
 	return book, nil
+}
+
+func compileMachine(name string, c *conf.Machine) (*Machine, error) {
+	infs := make([]Interface, len(*c))
+	for i, inf := range *c {
+		hwaddr, err := net.ParseMAC(inf.HardwareAddr)
+		if err != nil {
+			return nil, err
+		}
+		ipaddr := net.ParseIP(inf.IPAddr)
+		if ipaddr == nil {
+			return nil, &net.ParseError{
+				Type: "IP address",
+				Text: inf.IPAddr,
+			}
+		}
+		infs[i] = Interface{
+			HardwareAddr: hwaddr,
+			IPAddr:       ipaddr,
+			Fqdn:         inf.Fqdn,
+		}
+	}
+	return &Machine{
+		Name:       name,
+		Interfaces: infs,
+	}, nil
 }
 
 func compileNetwork(netConf *conf.V4Network) (*V4Network, error) {

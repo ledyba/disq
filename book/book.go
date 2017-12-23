@@ -3,8 +3,6 @@ package book
 import (
 	"bytes"
 	"net"
-
-	"github.com/krolaw/dhcp4"
 )
 
 // Immutable!!
@@ -26,6 +24,17 @@ func (book *Book) LookupIPForHardwareAddr(hwaddr net.HardwareAddr) net.IP {
 	}
 	return nil
 }
+func (book *Book) LookupIPForFQDN(fqdn string) net.IP {
+	for _, machine := range book.Machines {
+		for _, nic := range machine.Interfaces {
+			if nic.Fqdn == fqdn {
+				return nic.IPAddr
+			}
+		}
+
+	}
+	return nil
+}
 
 type V4Network struct {
 	Name              string
@@ -37,7 +46,6 @@ type V4Network struct {
 	NameServerAddrs   []net.IP
 	GatewayAddr       net.IP
 	LeaseDurationDays float64
-	DHCP4Options      dhcp4.Options
 }
 
 type Machine struct {

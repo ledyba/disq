@@ -5,6 +5,8 @@ import (
 
 	"sync"
 
+	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/ledyba/disq/book"
 	"github.com/miekg/dns"
@@ -42,6 +44,7 @@ func FromBook(book *book.Book) *Server {
 			ns := &dns.Server{}
 			ns.Handler = s
 			ns.Addr = dnsListen
+			ns.Net = "udp"
 			s.dns[networkName] = ns
 		}
 
@@ -111,13 +114,11 @@ func (s *Server) Stop() {
 			Info("Shutdown requested")
 		err = ns.Shutdown()
 		if err != nil {
-			if err != nil {
-				err = &DNSError{
-					Network: listen,
-					Err:     err,
-				}
-				s.ErrorStream <- err
+			err = &DNSError{
+				Network: listen,
+				Err:     err,
 			}
+			s.ErrorStream <- err
 		}
 		log.
 			WithField("Module", "DNS").
@@ -143,7 +144,28 @@ func (s *Server) Stop() {
 // Reload book.
 // But do not stop server.
 func (s *Server) Reload(b *book.Book) error {
-
+	dnsCnt := 0
+	dhcp4Cnt := 0
+	for name, network := range b.V4Networks {
+		if len(network.DNSListen) > 0 {
+			dnsCnt++
+			if _, ok := s.dns[name]; !ok {
+				return fmt.Errorf("can't add new DNS servers at this version: %s, %s", name, network.DNSListen)
+			}
+		}
+		if len(network.DHCP4Listen) > 0 {
+			dhcp4Cnt++
+			if _, ok := s.dhcp4[name]; !ok {
+				return fmt.Errorf("can't add new DHCP servers at this version: %s, %s", name, network.DHCP4Listen)
+			}
+		}
+	}
+	if dnsCnt != len(s.dns) {
+		return fmt.Errorf("can't remove DNS servers at this version: %d -> %d", len(s.dns), dnsCnt)
+	}
+	if dhcp4Cnt != len(s.dhcp4) {
+		return fmt.Errorf("can't remove DHCP4 servers at this version: %d -> %d", len(s.dhcp4), dhcp4Cnt)
+	}
 	s.storeBook(b)
 	return nil
 }
