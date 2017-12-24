@@ -16,13 +16,14 @@ func newReply(r *dns.Msg) *dns.Msg {
 }
 
 func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
+	b := s.book()
 	switch r.Opcode {
 	case dns.OpcodeQuery:
 		m := newReply(r)
 		for _, q := range r.Question {
 			switch q.Qtype {
 			case dns.TypeA:
-				if ipaddr := s.book().LookupIPForFQDN(q.Name); ipaddr != nil {
+				if ipaddr := b.LookupIPForFQDN(q.Name); ipaddr != nil {
 					// This host is in our datacenter.
 					ans := ipaddr.String()
 					log.WithField("Module", "DNS").Debugf("%s A %s", q.Name, ans)
@@ -56,12 +57,12 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 					}
 				}
 			default:
-				log.Info("Unknown name: ", q.Name)
+				log.Warn("Unsupported query: ", q.String())
 			}
 		}
 		w.WriteMsg(m)
 	case dns.OpcodeIQuery:
-		log.WithField("Module", "DNS").Info("Can't answer IQuery questions.")
+		log.WithField("Module", "DNS").Warn("IQuery was questioned, but it is obsoleted. See: https://tools.ietf.org/rfc/rfc3425.txt")
 	case dns.OpcodeStatus:
 		log.WithField("Module", "DNS").Info("Can't answer Status questions.")
 	case dns.OpcodeNotify:
