@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net"
 
+	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/ledyba/disq/conf"
 )
@@ -14,6 +16,16 @@ var (
 
 func FromConfig(conf *conf.Config) (*Book, error) {
 	book := &Book{}
+
+	//DNS
+	book.DNS.Listen = conf.DNS.Listen
+	book.DNS.Networks = conf.DNS.Networks
+	for _, network := range book.DNS.Networks {
+		_, ok := conf.V4Networks[network]
+		if !ok {
+			return nil, fmt.Errorf("network [%s] (allowed for serving DNS) not found", network)
+		}
+	}
 
 	// V4Netrowks
 	book.V4Networks = make(map[string]*V4Network)
@@ -155,7 +167,6 @@ func compileNetwork(netConf *conf.V4Network) (*V4Network, error) {
 	return &V4Network{
 		Interface:         nif,
 		InterfaceIPAddr:   interfaceAddress,
-		DNSListen:         netConf.DNSListen,
 		DHCP4Listen:       netConf.DHCP4Listen,
 		Network:           network,
 		NameServerAddrs:   nameServerAddrs,

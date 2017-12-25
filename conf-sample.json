@@ -1,22 +1,16 @@
 {
+  "dns": {
+    "listen": ":20000",
+    "networks": ["loopback"]
+  },
   "v4networks": {
     "loopback": {
       "interface": "lo0",
       "interface-address": "127.0.0.1/24",
-      "dns-listen": "127.0.0.1:20000",
       "dhcp4-listen":"",
       "lease-duration-days": 1.0,
       "nameserver-address": ["8.8.8.8","8.8.4.4"],
       "gateway-address": "127.0.0.1"
-    },
-    "en0": {
-      "interface": "en0",
-      "interface-address": "10.2.4.100/24",
-      "dns-listen": "",
-      "dhcp4-listen":"",
-      "lease-duration-days": 1.0,
-      "nameserver-address": ["8.8.8.8","8.8.4.4"],
-      "gateway-address": "10.2.4.1"
     }
   },
   "machines": {

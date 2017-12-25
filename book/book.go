@@ -7,10 +7,14 @@ import (
 
 // Immutable!!
 type Book struct {
+	DNS        DNS
 	V4Networks map[string]*V4Network
 	Machines   map[string]*Machine
-	ARecords   map[string]*Interface
-	PTRRecords map[string]*Interface
+}
+
+type DNS struct {
+	Listen   string
+	Networks []string
 }
 
 func (book *Book) LookupIPForHardwareAddr(hwaddr net.HardwareAddr) net.IP {
@@ -40,7 +44,6 @@ type V4Network struct {
 	Name              string
 	Interface         *net.Interface
 	InterfaceIPAddr   net.IP
-	DNSListen         string
 	DHCP4Listen       string
 	Network           *net.IPNet
 	NameServerAddrs   []net.IP

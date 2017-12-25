@@ -26,10 +26,9 @@ func (e *DHCP4WrongAddressRequestedError) Error() string {
 }
 
 type DNSError struct {
-	Err     error
-	Network string
+	Err error
 }
 
 func (e *DNSError) Error() string {
-	return fmt.Sprintf("DNS Error: network=%s err=%s", e.Network, e.Err)
+	return fmt.Sprintf("DNS Error: err=%s", e.Err)
 }

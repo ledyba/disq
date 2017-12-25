@@ -16,7 +16,28 @@ func newReply(r *dns.Msg) *dns.Msg {
 }
 
 func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
+	var err error
 	b := s.book()
+	remote := w.RemoteAddr().(*net.UDPAddr)
+	if remote == nil {
+		err = fmt.Errorf("unknown request from %s -> %s", w.RemoteAddr().String(), w.LocalAddr().String())
+		log.WithField("Module", "DNS").WithError(err).Error()
+		s.ErrorStream <- &DNSError{Err: err}
+		return
+	}
+	allowed := false
+	for _, network := range b.DNS.Networks {
+		if b.V4Networks[network].Network.Contains(remote.IP) {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		err = fmt.Errorf("unknown request from %s -> %s", w.RemoteAddr().String(), w.LocalAddr().String())
+		log.WithField("Module", "DNS").WithError(err).Error()
+		s.ErrorStream <- &DNSError{Err: err}
+		return
+	}
 	switch r.Opcode {
 	case dns.OpcodeQuery:
 		m := newReply(r)
