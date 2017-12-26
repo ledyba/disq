@@ -14,7 +14,7 @@ SRCS=$(shell find . -type f -name '*.go')
 	mkdir -p .bin
 
 run: all
-	.bin/disq -v --config ./conf-sample.json
+	.bin/disq -v --config ./config-sample.json
 
 test:
 	go test "$(REPO)/..."
