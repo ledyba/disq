@@ -1,32 +1,13 @@
 package conf
 
 import (
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"testing"
+
+	util "github.com/ledyba/disq/util-test"
 )
 
-func readAll(t *testing.T, relpath string) []byte {
-	cd, err := os.Getwd()
-	if err != nil {
-		t.Fatal("Error when calling getwd: ", err)
-	}
-	abspath := filepath.Join(cd, relpath)
-	f, err := os.Open(abspath)
-	if err != nil {
-		t.Fatal("Error when opening: ", abspath, "err=", err)
-	}
-	defer f.Close()
-	dat, err := ioutil.ReadAll(f)
-	if err != nil {
-		t.Fatal("Error when reading all ", abspath, "err=", err)
-	}
-	return dat
-}
-
 func TestEmptyConfig(t *testing.T) {
-	dat := readAll(t, "../config-sample.json")
+	dat := util.ReadAll(t, "../config-sample.json")
 	actual, err := Load(dat)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)

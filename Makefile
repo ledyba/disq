@@ -1,4 +1,4 @@
-.PHONY: all run test get clean
+.PHONY: all run test bench get clean
 
 all: .bin/disq;
 
@@ -18,6 +18,9 @@ run: all
 
 test:
 	go test "$(REPO)/..."
+
+bench:
+	go test -bench . "$(REPO)/..."
 
 get:
 	go get -u "github.com/Sirupsen/logrus"
