@@ -63,7 +63,7 @@ func (s *Server) Start() {
 			for atomic.LoadInt32(&s.done) == 0 {
 				log.
 					WithField("Module", "DNS").
-					Info("Started")
+					Infof("Seaving @ %s", s.dns.Addr)
 				err := s.dns.ListenAndServe()
 				if err != nil {
 					err = &DNSError{
@@ -82,7 +82,6 @@ func (s *Server) Start() {
 			s.doneWg.Add(1)
 			defer s.doneWg.Done()
 			for atomic.LoadInt32(&s.done) == 0 {
-				ds.log().Info("Started")
 				err := ds.Serve()
 				if err != nil {
 					err = &DHCP4Error{

@@ -1,4 +1,4 @@
-.PHONY: all run test bench get clean
+.PHONY: all run test bench get clean real-test
 
 all: .bin/disq;
 
@@ -10,6 +10,11 @@ SRCS=$(shell find . -type f -name '*.go')
 	go generate "$(REPO)/cmd/disq"
 	go build -o .bin/disq "$(REPO)/cmd/disq"
 
+.bin/disq.linux: .bin $(SRCS)
+	gofmt -w .
+	go generate "$(REPO)/cmd/disq"
+	GOOS=linux GOARCH=amd64 go build -o .bin/disq.linux "$(REPO)/cmd/disq"
+
 .bin:
 	mkdir -p .bin
 
@@ -18,6 +23,12 @@ run: all
 
 test:
 	go test "$(REPO)/..."
+
+real-test: .bin/disq.linux
+	scp .bin/disq.linux 202.229.192.118:~/disq
+	scp config-test.json 202.229.192.118:~/config.json
+	scp .bin/disq.linux 202.229.192.119:~/disq
+	scp config-test.json 202.229.192.119:~/config.json
 
 bench:
 	go test -bench . "$(REPO)/..."

@@ -16,7 +16,6 @@ func init() {
 
 func BenchmarkDNS(b *testing.B) {
 	var err error
-	//最初に長さを決める
 	b.ResetTimer()
 	s := FromBook(book_test.ReadBook(b, "./config-sample.json"))
 	s.Start()

@@ -52,6 +52,7 @@ func (s *dhcp4Server) Serve() error {
 			s.Shutdown()
 		}
 	}()
+	s.log().Infof("Serving @ %s", network.DHCP4Listen)
 	return dhcp.Serve(c, s)
 }
 
@@ -72,11 +73,17 @@ func joinIPv4(ips []net.IP) []byte {
 	if len(ips) == 1 {
 		return ips[0]
 	}
-	sum := make([]byte, len(ips)*4)
+	sum := make([]byte, 0, len(ips)*net.IPv4len)
 	off := 0
 	for _, ip := range ips {
-		copy(sum[off:off+4], ip)
-		off += 4
+		ip = ip.To4()
+		if ip == nil {
+			continue
+		}
+		for i := range ip {
+			sum = append(sum, ip[i])
+		}
+		off += len(ip)
 	}
 	return sum
 }
@@ -85,22 +92,29 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 	errorStream := s.parent.ErrorStream
 	book := s.parent.book()
 	network := book.V4Networks[s.network]
+
+	// Setup options
 	servOptions := dhcp.Options{
-		dhcp.OptionSubnetMask:       []byte(network.Network.Mask),
-		dhcp.OptionRouter:           []byte(network.GatewayAddr),
-		dhcp.OptionDomainNameServer: joinIPv4(network.NameServerAddrs),
+		dhcp.OptionSubnetMask: []byte(network.Network.Mask),
+	}
+	if len(network.NameServerAddrs) > 0 {
+		servOptions[dhcp.OptionDomainNameServer] = joinIPv4(network.NameServerAddrs)
+		log.Info(network.NameServerAddrs, servOptions[dhcp.OptionDomainNameServer])
+	}
+	if len(network.GatewayAddr) > 0 {
+		servOptions[dhcp.OptionRouter] = []byte(network.GatewayAddr)
 	}
 
 	var err error
 	sname := string(p.SName())
 	hwaddr := p.CHAddr()
-	s.log().Infof("Message from %s (%s)", sname, hwaddr.String())
+	s.log().Infof("Message from \"%s\" (%s)", sname, hwaddr.String())
 	ipaddr := book.LookupIPForHardwareAddr(hwaddr)
 	leaseDuration := time.Duration(float64(time.Hour) * 24 * network.LeaseDurationDays)
 	switch msgType {
 	case dhcp.Discover:
 		if ipaddr == nil {
-			s.log().WithError(err).Error("Could not parse mac addr: %s", hwaddr.String())
+			s.log().WithError(err).Errorf("Could not find address for %s", hwaddr.String())
 			return nil
 		}
 		//TODO: wait

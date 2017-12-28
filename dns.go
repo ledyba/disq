@@ -33,7 +33,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		}
 	}
 	if !allowed {
-		err = fmt.Errorf("unknown request from %s -> %s", w.RemoteAddr().String(), w.LocalAddr().String())
+		err = fmt.Errorf("unauthorized request from %s -> %s", w.RemoteAddr().String(), w.LocalAddr().String())
 		log.WithField("Module", "DNS").WithError(err).Error()
 		s.ErrorStream <- &DNSError{Err: err}
 		return
