@@ -99,7 +99,6 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 	}
 	if len(network.NameServerAddrs) > 0 {
 		servOptions[dhcp.OptionDomainNameServer] = joinIPv4(network.NameServerAddrs)
-		log.Info(network.NameServerAddrs, servOptions[dhcp.OptionDomainNameServer])
 	}
 	if len(network.GatewayAddr) > 0 {
 		servOptions[dhcp.OptionRouter] = []byte(network.GatewayAddr)
