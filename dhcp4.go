@@ -142,7 +142,7 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 		s.log().Infof(`Discover from "%s" (%s)
 Replying Offer:
   ServerIP: %v
-  IPAddr: %v
+  ClientIP: %v
   LeaseDuration: %v
   Options:
     Netmask: /%d
@@ -186,7 +186,7 @@ Replying Offer:
 		s.log().Infof(`Request from "%s" (%s)
 Replying ACK:
   ServerIP: %v
-  IPAddr: %v
+  ClientIP: %v
   LeaseDuration: %v
   Options:
     Netmask: /%d
