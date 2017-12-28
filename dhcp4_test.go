@@ -9,8 +9,8 @@ import (
 
 func TestJoinIP(t *testing.T) {
 	ips := []net.IP{
-		{1, 2, 3, 4},
-		{5, 6, 7, 8},
+		net.IPv4(1, 2, 3, 4),
+		net.IPv4(5, 6, 7, 8),
 	}
 	joinned := joinIPv4(ips)
 	expected := []byte{1, 2, 3, 4, 5, 6, 7, 8}
