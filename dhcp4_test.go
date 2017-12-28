@@ -18,3 +18,14 @@ func TestJoinIP(t *testing.T) {
 		t.Errorf("Expected %v, got %v", expected, joinned)
 	}
 }
+
+func TestShuffleIP(t *testing.T) {
+	a := net.IPv4(1, 2, 3, 4)
+	b := net.IPv4(5, 6, 7, 8)
+	ips := []net.IP{a, b}
+	shuffled := shuffleIP(ips)
+	if !((bytes.Compare(shuffled[0], a) == 0 && bytes.Compare(shuffled[1], b) == 0) ||
+		(bytes.Compare(shuffled[0], b) == 0 && bytes.Compare(shuffled[1], a) == 0)) {
+		t.Errorf("Failed to shuffle ip. Got: %v", shuffled)
+	}
+}

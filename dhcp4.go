@@ -8,6 +8,8 @@ import (
 
 	"io"
 
+	"math/rand"
+
 	log "github.com/Sirupsen/logrus"
 	dhcp "github.com/krolaw/dhcp4"
 	"github.com/krolaw/dhcp4/conn"
@@ -88,6 +90,14 @@ func joinIPv4(ips []net.IP) []byte {
 	return sum
 }
 
+func shuffleIP(ips []net.IP) []net.IP {
+	shuffled := make([]net.IP, len(ips))
+	for i, j := range rand.Perm(len(ips)) {
+		shuffled[i] = ips[j]
+	}
+	return shuffled
+}
+
 func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options dhcp.Options) dhcp.Packet {
 	errorStream := s.parent.ErrorStream
 	book := s.parent.book()
@@ -98,7 +108,16 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 		dhcp.OptionSubnetMask: []byte(network.Network.Mask),
 	}
 	if len(network.NameServerAddrs) > 0 {
-		servOptions[dhcp.OptionDomainNameServer] = joinIPv4(network.NameServerAddrs)
+		lst := make([]net.IP, 0)
+		for _, ip := range network.NameServerAddrs {
+			ip = ip.To4()
+			if ip == nil {
+				continue
+			}
+			lst = append(lst, ip)
+		}
+		lst = shuffleIP(lst)
+		servOptions[dhcp.OptionDomainNameServer] = joinIPv4(lst)
 	}
 	if len(network.GatewayAddr) > 0 {
 		servOptions[dhcp.OptionRouter] = []byte(network.GatewayAddr)
