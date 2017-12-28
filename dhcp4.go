@@ -107,17 +107,17 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 	servOptions := dhcp.Options{
 		dhcp.OptionSubnetMask: []byte(network.Network.Mask),
 	}
+	var nsList []net.IP
 	if len(network.NameServerAddrs) > 0 {
-		lst := make([]net.IP, 0)
 		for _, ip := range network.NameServerAddrs {
 			ip = ip.To4()
 			if ip == nil {
 				continue
 			}
-			lst = append(lst, ip)
+			nsList = append(nsList, ip)
 		}
-		lst = shuffleIP(lst)
-		servOptions[dhcp.OptionDomainNameServer] = joinIPv4(lst)
+		nsList = shuffleIP(nsList)
+		servOptions[dhcp.OptionDomainNameServer] = joinIPv4(nsList)
 	}
 	if len(network.GatewayAddr) > 0 {
 		servOptions[dhcp.OptionRouter] = []byte(network.GatewayAddr)
@@ -126,7 +126,6 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 	var err error
 	sname := string(p.SName())
 	hwaddr := p.CHAddr()
-	s.log().Infof("Message from \"%s\" (%s)", sname, hwaddr.String())
 	ipaddr := book.LookupIPForHardwareAddr(hwaddr)
 	leaseDuration := time.Duration(float64(time.Hour) * 24 * network.LeaseDurationDays)
 	switch msgType {
@@ -135,6 +134,21 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 			s.log().WithError(err).Errorf("Could not find address for %s", hwaddr.String())
 			return nil
 		}
+		s.log().Infof(`Discover from "%s" (%s)
+Replying Offer:
+  ServerIP: %v
+  IPAddr: %v
+  LeaseDuration: %v
+  Options:
+    Netmask: %v
+    Nameservers: %v
+    Router: %v`,
+			sname, hwaddr.String(),
+			network.MyAddress,
+			ipaddr, leaseDuration,
+			network.Network.Mask,
+			nsList,
+			network.GatewayAddr)
 		//TODO: wait
 		return dhcp.ReplyPacket(
 			p, dhcp.Offer,
@@ -151,24 +165,38 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 		if reqIP == nil {
 			reqIP = net.IP(p.CIAddr())
 		}
-
-		if reqIP.Equal(ipaddr) {
-			return dhcp.ReplyPacket(p, dhcp.ACK,
-				network.MyAddress, reqIP,
-				leaseDuration,
-				servOptions.SelectOrderOrAll(options[dhcp.OptionParameterRequestList]))
+		if !reqIP.Equal(ipaddr) {
+			// Whats wrong?
+			err = &DHCP4WrongAddressRequestedError{
+				SName:        sname,
+				HardwareAddr: hwaddr,
+				Requested:    reqIP,
+				Expected:     ipaddr,
+			}
+			errorStream <- err
+			s.log().WithError(err).Error("Invalid request received. We sent NAK back.")
+			return dhcp.ReplyPacket(p, dhcp.NAK,
+				network.MyAddress, nil, 0, nil)
 		}
-		// Whats wrong?
-		err = &DHCP4WrongAddressRequestedError{
-			SName:        sname,
-			HardwareAddr: hwaddr,
-			Requested:    reqIP,
-			Expected:     ipaddr,
-		}
-		errorStream <- err
-		s.log().WithError(err).Error("Invalid request received. We sent NAK back.")
-		return dhcp.ReplyPacket(p, dhcp.NAK,
-			network.MyAddress, nil, 0, nil)
+		s.log().Infof(`Request from "%s" (%s)
+Replying ACK:
+  ServerIP: %v
+  IPAddr: %v
+  LeaseDuration: %v
+  Options:
+    Netmask: %v
+    Nameservers: %v
+    Router: %v`,
+			sname, hwaddr.String(),
+			network.MyAddress,
+			ipaddr, leaseDuration,
+			network.Network.Mask,
+			nsList,
+			network.GatewayAddr)
+		return dhcp.ReplyPacket(p, dhcp.ACK,
+			network.MyAddress, reqIP,
+			leaseDuration,
+			servOptions.SelectOrderOrAll(options[dhcp.OptionParameterRequestList]))
 
 	case dhcp.Release:
 		// Nothing to do, but log.
