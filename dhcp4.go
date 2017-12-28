@@ -98,6 +98,11 @@ func shuffleIP(ips []net.IP) []net.IP {
 	return shuffled
 }
 
+func mask2bits(mask net.IPMask) int {
+	ones, _ := mask.Size()
+	return ones
+}
+
 func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options dhcp.Options) dhcp.Packet {
 	errorStream := s.parent.ErrorStream
 	book := s.parent.book()
@@ -140,13 +145,13 @@ Replying Offer:
   IPAddr: %v
   LeaseDuration: %v
   Options:
-    Netmask: %v
+    Netmask: /%d
     Nameservers: %v
     Router: %v`,
 			sname, hwaddr.String(),
 			network.MyAddress,
 			ipaddr, leaseDuration,
-			network.Network.Mask,
+			mask2bits(network.Network.Mask),
 			nsList,
 			network.GatewayAddr)
 		//TODO: wait
@@ -184,13 +189,13 @@ Replying ACK:
   IPAddr: %v
   LeaseDuration: %v
   Options:
-    Netmask: %v
+    Netmask: /%d
     Nameservers: %v
     Router: %v`,
 			sname, hwaddr.String(),
 			network.MyAddress,
 			ipaddr, leaseDuration,
-			network.Network.Mask,
+			mask2bits(network.Network.Mask),
 			nsList,
 			network.GatewayAddr)
 		return dhcp.ReplyPacket(p, dhcp.ACK,
