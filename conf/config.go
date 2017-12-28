@@ -17,7 +17,7 @@ type DNS struct {
 
 type V4Network struct {
 	InterfaceName     string   `json:"interface"`
-	InterfaceIPAddr   string   `json:"interface-address"`
+	Network           string   `json:"network"`
 	DHCP4Listen       string   `json:"dhcp4-listen"`
 	LeaseDurationDays float64  `json:"lease-duration-days"`
 	NameServerAddrs   []string `json:"nameserver-address,omitempty"`

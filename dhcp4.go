@@ -119,13 +119,13 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 		//TODO: wait
 		return dhcp.ReplyPacket(
 			p, dhcp.Offer,
-			network.InterfaceIPAddr,
+			network.MyAddress,
 			ipaddr,
 			leaseDuration,
 			servOptions.SelectOrderOrAll(options[dhcp.OptionParameterRequestList]))
 
 	case dhcp.Request:
-		if server, ok := options[dhcp.OptionServerIdentifier]; ok && !net.IP(server).Equal(network.InterfaceIPAddr) {
+		if server, ok := options[dhcp.OptionServerIdentifier]; ok && !net.IP(server).Equal(network.MyAddress) {
 			return nil // Message not for this dhcp server
 		}
 		reqIP := net.IP(options[dhcp.OptionRequestedIPAddress])
@@ -135,7 +135,7 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 
 		if reqIP.Equal(ipaddr) {
 			return dhcp.ReplyPacket(p, dhcp.ACK,
-				network.InterfaceIPAddr, reqIP,
+				network.MyAddress, reqIP,
 				leaseDuration,
 				servOptions.SelectOrderOrAll(options[dhcp.OptionParameterRequestList]))
 		}
@@ -149,7 +149,7 @@ func (s *dhcp4Server) ServeDHCP(p dhcp.Packet, msgType dhcp.MessageType, options
 		errorStream <- err
 		s.log().WithError(err).Error("Invalid request received. We sent NAK back.")
 		return dhcp.ReplyPacket(p, dhcp.NAK,
-			network.InterfaceIPAddr, nil, 0, nil)
+			network.MyAddress, nil, 0, nil)
 
 	case dhcp.Release:
 		// Nothing to do, but log.

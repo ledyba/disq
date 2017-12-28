@@ -107,27 +107,27 @@ func compileNetwork(netConf *conf.V4Network) (*V4Network, error) {
 		log.Errorf("Failed to guess addresses of %s", netConf.InterfaceName)
 		return nil, err
 	}
-	interfaceAddress, network, err := net.ParseCIDR(netConf.InterfaceIPAddr)
+	_, network, err := net.ParseCIDR(netConf.Network)
 	if err != nil {
-		log.Errorf("InterfaceAddress %s (configured for %s) is not a valid ipv4 address.", netConf.InterfaceIPAddr, netConf.InterfaceName)
+		log.Errorf("NetworkAddress %s (configured for %s) is not a valid ipv4 network.", netConf.Network, netConf.InterfaceName)
 		return nil, err
 	}
 
-	var addr net.Addr
+	var addr net.IP
 	for _, a := range addrs {
 		ip, _, err := net.ParseCIDR(a.String())
 		if err != nil {
 			return nil, err
 		}
-		if ip.Equal(interfaceAddress) {
-			addr = a
+		if network.Contains(ip) {
+			addr = ip
 			break
 		}
 	}
 
 	if addr == nil {
-		log.Errorf("Address %s is not assigned to %s", interfaceAddress.String(), netConf.InterfaceName)
-		log.Errorf("  Address assigned to %s:", netConf.InterfaceName)
+		log.Errorf("Network %s is not assigned to %s", network.String(), netConf.InterfaceName)
+		log.Errorf("  Addresses assigned to %s:", netConf.InterfaceName)
 		for _, a := range addrs {
 			log.Errorf("    - %s (%s)", a.String(), a.Network())
 		}
@@ -157,7 +157,7 @@ func compileNetwork(netConf *conf.V4Network) (*V4Network, error) {
 	} else {
 		gatewayAddress = net.ParseIP(netConf.GatewayAddr)
 		if gatewayAddress == nil {
-			log.Errorf("NameServer %s (configured for %s) is not a valid ipv4 address.", netConf.GatewayAddr, netConf.InterfaceIPAddr)
+			log.Errorf("NameServer %s (configured for %s) is not a valid ipv4 address.", netConf.GatewayAddr, netConf.InterfaceName)
 			return nil, &net.ParseError{
 				Type: "IP address",
 				Text: netConf.GatewayAddr,
@@ -166,9 +166,9 @@ func compileNetwork(netConf *conf.V4Network) (*V4Network, error) {
 	}
 	return &V4Network{
 		Interface:         nif,
-		InterfaceIPAddr:   interfaceAddress,
-		DHCP4Listen:       netConf.DHCP4Listen,
+		MyAddress:         addr,
 		Network:           network,
+		DHCP4Listen:       netConf.DHCP4Listen,
 		NameServerAddrs:   nameServerAddrs,
 		GatewayAddr:       gatewayAddress,
 		LeaseDurationDays: netConf.LeaseDurationDays,

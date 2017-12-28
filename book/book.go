@@ -43,9 +43,9 @@ func (book *Book) LookupIPForFQDN(fqdn string) net.IP {
 type V4Network struct {
 	Name              string
 	Interface         *net.Interface
-	InterfaceIPAddr   net.IP
-	DHCP4Listen       string
+	MyAddress         net.IP
 	Network           *net.IPNet
+	DHCP4Listen       string
 	NameServerAddrs   []net.IP
 	GatewayAddr       net.IP
 	LeaseDurationDays float64
