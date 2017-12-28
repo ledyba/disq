@@ -17,21 +17,21 @@
     "aoba": [
       {
         "hardware-address": "72:00:07:ef:42:80",
-        "ip-address": "127.0.0.2",
+        "ipv4-address": "127.0.0.2",
         "fqdn": "aoba.eagle-jump."
       }
     ],
     "yagami": [
       {
         "hardware-address": "72:00:07:ef:42:81",
-        "ip-address": "127.0.0.3",
+        "ipv4-address": "127.0.0.3",
         "fqdn": "yagami.eagle-jump."
       }
     ],
     "rin": [
       {
         "hardware-address": "72:00:07:ef:42:82",
-        "ip-address": "127.0.0.4",
+        "ipv4-address": "127.0.0.4",
         "fqdn": "rin.eagle-jump."
       }
     ]

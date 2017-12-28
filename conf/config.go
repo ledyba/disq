@@ -28,7 +28,7 @@ type Machine []Interface
 
 type Interface struct {
 	HardwareAddr string `json:"hardware-address"`
-	IPAddr       string `json:"ip-address"`
+	IPv4Addr     string `json:"ipv4-address"`
 	Fqdn         string `json:"fqdn,omitempty"` /* (ex) zoi.eaglejump.jp. */
 }
 

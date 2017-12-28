@@ -17,22 +17,22 @@ type DNS struct {
 	Networks []string
 }
 
-func (book *Book) LookupIPForHardwareAddr(hwaddr net.HardwareAddr) net.IP {
-	for _, machine := range book.Machines {
+func (b *Book) LookupIPForHardwareAddr(hwaddr net.HardwareAddr) net.IP {
+	for _, machine := range b.Machines {
 		for _, nic := range machine.Interfaces {
 			if bytes.Compare(nic.HardwareAddr, hwaddr) == 0 {
-				return nic.IPAddr
+				return nic.IPv4Addr
 			}
 		}
 
 	}
 	return nil
 }
-func (book *Book) LookupIPForFQDN(fqdn string) net.IP {
-	for _, machine := range book.Machines {
+func (b *Book) LookupIPForFQDN(fqdn string) net.IP {
+	for _, machine := range b.Machines {
 		for _, nic := range machine.Interfaces {
 			if nic.Fqdn == fqdn {
-				return nic.IPAddr
+				return nic.IPv4Addr
 			}
 		}
 
@@ -58,6 +58,6 @@ type Machine struct {
 
 type Interface struct {
 	HardwareAddr net.HardwareAddr
-	IPAddr       net.IP
+	IPv4Addr     net.IP
 	Fqdn         string
 }

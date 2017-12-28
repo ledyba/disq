@@ -15,12 +15,13 @@ var (
 )
 
 func FromConfig(conf *conf.Config) (*Book, error) {
-	book := &Book{}
+	var err error
+	b := &Book{}
 
 	//DNS
-	book.DNS.Listen = conf.DNS.Listen
-	book.DNS.Networks = conf.DNS.Networks
-	for _, network := range book.DNS.Networks {
+	b.DNS.Listen = conf.DNS.Listen
+	b.DNS.Networks = conf.DNS.Networks
+	for _, network := range b.DNS.Networks {
 		_, ok := conf.V4Networks[network]
 		if !ok {
 			return nil, fmt.Errorf("network [%s] (allowed for serving DNS) not found", network)
@@ -28,26 +29,31 @@ func FromConfig(conf *conf.Config) (*Book, error) {
 	}
 
 	// V4Netrowks
-	book.V4Networks = make(map[string]*V4Network)
+	b.V4Networks = make(map[string]*V4Network)
 	for name, netConf := range conf.V4Networks {
 		network, err := compileNetwork(&netConf)
 		if err != nil {
 			return nil, err
 		}
-		book.V4Networks[name] = network
+		b.V4Networks[name] = network
 	}
 
 	// Machines
-	book.Machines = make(map[string]*Machine)
+	b.Machines = make(map[string]*Machine)
 	for name, mc := range conf.Machines {
 		m, err := compileMachine(name, &mc)
 		if err != nil {
 			return nil, err
 		}
-		book.Machines[name] = m
+		b.Machines[name] = m
 	}
 
-	return book, nil
+	err = b.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }
 
 func compileMachine(name string, c *conf.Machine) (*Machine, error) {
@@ -57,16 +63,19 @@ func compileMachine(name string, c *conf.Machine) (*Machine, error) {
 		if err != nil {
 			return nil, err
 		}
-		ipaddr := net.ParseIP(inf.IPAddr)
-		if ipaddr == nil {
+		ipv4addr := net.ParseIP(inf.IPv4Addr)
+		if ipv4addr != nil {
+			ipv4addr = ipv4addr.To4()
+		}
+		if ipv4addr == nil {
 			return nil, &net.ParseError{
 				Type: "IP address",
-				Text: inf.IPAddr,
+				Text: inf.IPv4Addr,
 			}
 		}
 		infs[i] = Interface{
 			HardwareAddr: hwaddr,
-			IPAddr:       ipaddr,
+			IPv4Addr:     ipv4addr,
 			Fqdn:         inf.Fqdn,
 		}
 	}
@@ -84,29 +93,34 @@ func compileNetwork(netConf *conf.V4Network) (*V4Network, error) {
 		log.Errorf("  All Interfaces:")
 		nics, err2 := net.Interfaces()
 		if err2 != nil {
-			log.Errorf("  NotFound: %v", err2)
+			log.Errorf("  Error on listing interfaces: %v", err2)
 			return nil, err2
 		}
-		for _, nic := range nics {
-			log.Errorf("  [%02d] %s", nic.Index, nic.Name)
-			log.Errorf("    -  HW: %s", nic.HardwareAddr)
-			log.Errorf("    - MTU: %d", nic.MTU)
-			addrs, err3 := nic.Addrs()
-			if err3 != nil {
-				log.Errorf("       - Addr: error=%v", err3)
-				return nil, err3
-			}
-			for _, addr := range addrs {
-				log.Errorf("       - Addr: %s (%s)", addr.String(), addr.Network())
+		if len(nics) == 0 {
+			log.Error("  <<Not Found>>")
+		} else {
+			for _, nic := range nics {
+				log.Errorf("  [%02d] %s", nic.Index, nic.Name)
+				log.Errorf("    -  HW: %s", nic.HardwareAddr)
+				log.Errorf("    - MTU: %d", nic.MTU)
+				addrs, err3 := nic.Addrs()
+				if err3 != nil {
+					log.Errorf("       - Addr: error=%v", err3)
+					return nil, err3
+				}
+				for _, addr := range addrs {
+					log.Errorf("       - Addr: %s (%s)", addr.String(), addr.Network())
+				}
 			}
 		}
 		return nil, err
 	}
 	addrs, err := nif.Addrs()
 	if err != nil {
-		log.Errorf("Failed to guess addresses of %s", netConf.InterfaceName)
+		log.Errorf("Error on guessing addresses of %s", netConf.InterfaceName)
 		return nil, err
 	}
+
 	_, network, err := net.ParseCIDR(netConf.Network)
 	if err != nil {
 		log.Errorf("NetworkAddress %s (configured for %s) is not a valid ipv4 network.", netConf.Network, netConf.InterfaceName)
@@ -128,8 +142,12 @@ func compileNetwork(netConf *conf.V4Network) (*V4Network, error) {
 	if addr == nil {
 		log.Errorf("Network %s is not assigned to %s", network.String(), netConf.InterfaceName)
 		log.Errorf("  Addresses assigned to %s:", netConf.InterfaceName)
-		for _, a := range addrs {
-			log.Errorf("    - %s (%s)", a.String(), a.Network())
+		if len(addrs) == 0 {
+			log.Error("   <<Not Found>>")
+		} else {
+			for _, a := range addrs {
+				log.Errorf("    - %s (%s)", a.String(), a.Network())
+			}
 		}
 		return nil, ErrAddressIsNotAssigned
 	}
