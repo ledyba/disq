@@ -17,11 +17,13 @@ import (
 	"github.com/ledyba/disq"
 	"github.com/ledyba/disq/book"
 	"github.com/ledyba/disq/conf"
+	"github.com/ledyba/disq/zabbix"
 )
 
 //go:generate bash geninfo.sh
 
 var config = flag.String("config", "./config.json", "Config file path")
+var zabbixHost = flag.String("zabbix", "localhost:10080", "Zabbix server addr")
 var verbose = flag.Bool("v", false, "BE VERBOSE.")
 
 func reload(s *disq.Server) {
@@ -56,6 +58,10 @@ func reload(s *disq.Server) {
 	if err != nil {
 		log.WithField("Module", "Reload").WithError(err).Error("Failed to reload book")
 	}
+}
+
+func newZabbix() *zabbix.Sender {
+	return nil
 }
 
 func main() {
