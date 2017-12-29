@@ -55,34 +55,18 @@ func (p *Packet) DataLen() []byte {
 
 // Sender class.
 type Sender struct {
-	Host string
-	Port int
+	Addr string
 }
 
 // Sender class constructor.
-func NewSender(host string, port int) *Sender {
-	s := &Sender{Host: host, Port: port}
+func NewSender(addr string) *Sender {
+	s := &Sender{Addr: addr}
 	return s
 }
 
 // Method Sender class, return zabbix header.
 func (s *Sender) getHeader() []byte {
 	return []byte("ZBXD\x01")
-}
-
-// Method Sender class, resolve uri by name:port.
-func (s *Sender) getTCPAddr() (iaddr *net.TCPAddr, err error) {
-	// format: hostname:port
-	addr := fmt.Sprintf("%s:%d", s.Host, s.Port)
-
-	// Resolve hostname:port to ip:port
-	iaddr, err = net.ResolveTCPAddr("tcp", addr)
-	if err != nil {
-		err = fmt.Errorf("Connection failed: %s", err.Error())
-		return
-	}
-
-	return
 }
 
 // Method Sender class, make connection to uri.
@@ -94,7 +78,7 @@ func (s *Sender) connect() (conn *net.TCPConn, err error) {
 	}
 
 	// Open connection to zabbix host
-	iaddr, err := s.getTCPAddr()
+	addr, err := net.ResolveTCPAddr("tcp", s.Addr)
 	if err != nil {
 		return
 	}
@@ -103,13 +87,13 @@ func (s *Sender) connect() (conn *net.TCPConn, err error) {
 	ch := make(chan DialResp)
 
 	go func() {
-		conn, err = net.DialTCP("tcp", nil, iaddr)
+		conn, err = net.DialTCP("tcp", nil, addr)
 		ch <- DialResp{Conn: conn, Error: err}
 	}()
 
 	select {
 	case <-time.After(5 * time.Second):
-		err = fmt.Errorf("Connection Timeout")
+		err = fmt.Errorf("connection timeout")
 	case resp := <-ch:
 		if resp.Error != nil {
 			err = resp.Error
@@ -127,7 +111,7 @@ func (s *Sender) read(conn *net.TCPConn) (res []byte, err error) {
 	res = make([]byte, 1024)
 	res, err = ioutil.ReadAll(conn)
 	if err != nil {
-		err = fmt.Errorf("Error whule receiving the data: %s", err.Error())
+		err = fmt.Errorf("error whule receiving the data: %s", err.Error())
 		return
 	}
 
@@ -157,7 +141,7 @@ func (s *Sender) Send(packet *Packet) (res []byte, err error) {
 	// Sent packet to zabbix
 	_, err = conn.Write(buffer)
 	if err != nil {
-		err = fmt.Errorf("Error while sending the data: %s", err.Error())
+		err = fmt.Errorf("error while sending the data: %s", err.Error())
 		return
 	}
 

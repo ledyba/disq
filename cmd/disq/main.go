@@ -23,7 +23,7 @@ import (
 //go:generate bash geninfo.sh
 
 var config = flag.String("config", "./config.json", "Config file path")
-var zabbixHost = flag.String("zabbix", "localhost:10080", "Zabbix server addr")
+var zabbixHost = flag.String("zabbix", "", "Zabbix server addr")
 var verbose = flag.Bool("v", false, "BE VERBOSE.")
 
 func reload(s *disq.Server) {
@@ -60,25 +60,32 @@ func reload(s *disq.Server) {
 	}
 }
 
-func newZabbix() *zabbix.Sender {
-	return nil
-}
-
 func main() {
 	var err error
+	var zbx *zabbix.Sender
 	flag.Parse()
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	log.Infof(`
 ***** disq *****
+Hostname: %s
 Build at: %s"
 Git Revision:
 %s
 ****************`,
+		color.MagentaString("%s", hostname),
 		color.MagentaString("%s", buildAt()),
 		color.MagentaString("%s", gitRev()))
 
 	if *verbose {
 		log.SetLevel(log.DebugLevel)
+	}
+
+	if len(*zabbixHost) > 0 {
+		zbx = zabbix.NewSender(*zabbixHost)
 	}
 
 	dat, err := func() ([]byte, error) {
@@ -128,6 +135,17 @@ Git Revision:
 			select {
 			case err := <-s.ErrorStream:
 				log.WithField("Module", "ErrorHandler").WithError(err).Error("Error!")
+				if zbx != nil {
+					payload := []*zabbix.Metric{
+						zabbix.NewMetric(hostname, "disq.errors", err.Error()),
+					}
+					resp, err := zbx.Send(zabbix.NewPacket(payload))
+					if err != nil {
+						log.Errorf("Error on sending packet to Zabbix: %v", err)
+					} else {
+						log.Errorf("Zabbix packet was sent successfully: %s", string(resp))
+					}
+				}
 			case <-errorHandleDone:
 				return
 			}
