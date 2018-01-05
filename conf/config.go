@@ -11,8 +11,10 @@ type Config struct {
 }
 
 type DNS struct {
-	Listen   string   `json:"listen"`
-	Networks []string `json:"networks"`
+	Listen    string   `json:"listen"`
+	Networks  []string `json:"networks"`
+	LocalTTL  int      `json:"local-ttl"`
+	GlobalTTL int      `json:"global-ttl"`
 }
 
 type V4Network struct {

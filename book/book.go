@@ -13,8 +13,10 @@ type Book struct {
 }
 
 type DNS struct {
-	Listen   string
-	Networks []string
+	Listen    string
+	Networks  []string
+	LocalTTL  int
+	GlobalTTL int
 }
 
 func (b *Book) LookupIPForHardwareAddr(hwaddr net.HardwareAddr) net.IP {

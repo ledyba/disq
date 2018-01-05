@@ -46,8 +46,9 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				if ipaddr := b.LookupIPForFQDN(q.Name); ipaddr != nil {
 					// This host is in our datacenter.
 					ans := ipaddr.String()
-					log.WithField("Module", "DNS").Debugf("%s A %s", q.Name, ans)
-					rr, err := dns.NewRR(fmt.Sprintf("%s A %s", q.Name, ans))
+					resp := fmt.Sprintf("%s %d A %s", q.Name, b.DNS.LocalTTL, ans)
+					log.WithField("Module", "DNS").Debugf(resp)
+					rr, err := dns.NewRR(resp)
 					if err != nil {
 						log.WithField("Module", "DNS").WithError(err).Error("[BUG] Error when creating DNS response")
 						return
@@ -66,7 +67,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 						if ipaddr == nil {
 							continue
 						}
-						resp := fmt.Sprintf("%s A %s", q.Name, ipaddr.String())
+						resp := fmt.Sprintf("%s %d A %s", q.Name, b.DNS.GlobalTTL, ipaddr.String())
 						log.WithField("Module", "DNS").Debug(resp)
 						rr, err := dns.NewRR(resp)
 						m.Answer = append(m.Answer, rr)

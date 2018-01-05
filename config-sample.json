@@ -1,7 +1,9 @@
 {
   "dns": {
     "listen": ":20000",
-    "networks": ["loopback"]
+    "networks": ["loopback"],
+    "local-ttl": 600,
+    "global-ttl": 10
   },
   "v4networks": {
     "loopback": {

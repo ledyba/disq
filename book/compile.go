@@ -21,6 +21,14 @@ func FromConfig(conf *conf.Config) (*Book, error) {
 	//DNS
 	b.DNS.Listen = conf.DNS.Listen
 	b.DNS.Networks = conf.DNS.Networks
+	b.DNS.LocalTTL = conf.DNS.LocalTTL
+	if b.DNS.LocalTTL < 0 {
+		b.DNS.LocalTTL = 0
+	}
+	b.DNS.GlobalTTL = conf.DNS.GlobalTTL
+	if b.DNS.GlobalTTL < 0 {
+		b.DNS.GlobalTTL = 0
+	}
 	for _, network := range b.DNS.Networks {
 		_, ok := conf.V4Networks[network]
 		if !ok {

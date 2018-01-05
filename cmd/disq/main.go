@@ -12,6 +12,8 @@ import (
 
 	"sync"
 
+	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/fatih/color"
 	"github.com/ledyba/disq"
@@ -25,6 +27,9 @@ import (
 var config = flag.String("config", "./config.json", "Config file path")
 var zabbixHost = flag.String("zabbix", "", "Zabbix server addr")
 var verbose = flag.Bool("v", false, "BE VERBOSE.")
+
+var hostname string
+var sender *zabbix.Sender
 
 func reload(s *disq.Server) {
 	dat, err := func() ([]byte, error) {
@@ -60,11 +65,26 @@ func reload(s *disq.Server) {
 	}
 }
 
+func sendZabbix(msg string) {
+	if sender == nil {
+		return
+	}
+	log.WithField("Module", "Zabbix").Debugf("Sending: %s", msg)
+	payload := []*zabbix.Metric{
+		zabbix.NewMetric(hostname, "disq.errors", msg),
+	}
+	resp, err := sender.Send(zabbix.NewPacket(payload))
+	if err != nil {
+		log.WithField("Module", "Zabbix").Errorf("Error while sending: %v", err)
+	} else {
+		log.WithField("Module", "Zabbix").Debugf("Sent successfully: %s", string(resp))
+	}
+}
+
 func main() {
 	var err error
-	var zbx *zabbix.Sender
 	flag.Parse()
-	hostname, err := os.Hostname()
+	hostname, err = os.Hostname()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -85,7 +105,7 @@ Git Revision:
 	}
 
 	if len(*zabbixHost) > 0 {
-		zbx = zabbix.NewSender(*zabbixHost)
+		sender = zabbix.NewSender(*zabbixHost)
 	}
 
 	dat, err := func() ([]byte, error) {
@@ -135,17 +155,7 @@ Git Revision:
 			select {
 			case err := <-s.ErrorStream:
 				log.WithField("Module", "ErrorHandler").WithError(err).Error("Error!")
-				if zbx != nil {
-					payload := []*zabbix.Metric{
-						zabbix.NewMetric(hostname, "disq.errors", err.Error()),
-					}
-					resp, err := zbx.Send(zabbix.NewPacket(payload))
-					if err != nil {
-						log.Errorf("Error on sending packet to Zabbix: %v", err)
-					} else {
-						log.Errorf("Zabbix packet was sent successfully: %s", string(resp))
-					}
-				}
+				sendZabbix(fmt.Sprintf("[Error]%s", err.Error()))
 			case <-errorHandleDone:
 				return
 			}
@@ -186,6 +196,7 @@ Git Revision:
 		}
 	}()
 	log.Info("All subsystems started.")
+	sendZabbix("Started")
 
 	wg.Wait()
 
