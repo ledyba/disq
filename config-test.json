@@ -1,0 +1,27 @@
+{
+  "dns": {
+    "listen": ":53",
+    "networks": ["test"],
+    "local-ttl": 600,
+    "global-ttl": 10
+  },
+  "v4networks": {
+    "test": {
+      "interface": "ens160",
+      "network": "192.168.0.0/24",
+      "dhcp4-listen":":67",
+      "lease-duration-days": 1.0,
+      "nameserver-address": ["192.168.0.1","192.168.0.2"],
+      "gateway-address": ""
+    }
+  },
+  "machines": {
+    "aoba": [
+      {
+        "hardware-address": "00:0c:29:0c:0b:0c",
+        "ipv4-address": "192.168.0.3",
+        "fqdn": "aoba.eagle-jump."
+      }
+     ]
+  }
+}
